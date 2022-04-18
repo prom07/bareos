@@ -1,0 +1,96 @@
+client=client_name
+clname=client_name
+fullname=full_client_name
+pass=P0FPRHuVbIq6rDH0+B3ljITXMyGlfEnKSpcp2t6fBK00
+pref=conf
+
+mkdir /mnt/raid6/bareos/$clname
+
+#device
+exec 1>/etc/bareos/bareos-sd.d/device/$clname-device.conf
+echo "Device {
+  Name = $clname-device
+  Media Type = File
+  Archive Device = /mnt/raid6/bareos/$clname
+  LabelMedia = yes;
+  Random Access = yes;
+  AutomaticMount = yes;
+  RemovableMedia = no;
+  AlwaysOpen = no;
+  Maximum Network Buffer Size = 65536
+}"
+
+#client
+exec 1>/etc/bareos/bareos-dir.d/client/$client.conf
+echo "Client {
+  Name = $client
+  Address = $fullname
+  Password = \"$pass\"
+  # Catalog = \"MyCatalog\"
+}"
+
+#fileset
+exec 1>/etc/bareos/bareos-dir.d/fileset/$clname-$pref-fileset.conf
+echo "FileSet {
+  Name = \"$clname-$pref-fileset\"
+        Include {
+                Options {
+                        Signature = MD5
+                        IgnoreCase = yes
+                        }
+        File = "E:/backup"
+        }
+}"
+
+#storage
+exec 1>/etc/bareos/bareos-dir.d/storage/$clname-storage.conf
+echo "Storage {
+  Name = $clname-storage
+  Address = name_server
+  Password = \"password\"
+  Device = $clname-device
+  Media Type = File
+}"
+
+#pool full
+exec 1>/etc/bareos/bareos-dir.d/pool/$clname-$pref-pool.conf
+echo "Pool {
+  Name = $clname-$pref-pool
+  Pool Type = Backup
+  Recycle = yes
+  AutoPrune = yes
+  Volume Retention = 18 days
+  ActionOnPurge = Truncate
+  Maximum Volume Jobs = 1
+  Maximum Volumes = 3
+  Label Format = \"$clname-$pref-volume-\"
+}"
+
+#schedule full
+exec 1>/etc/bareos/bareos-dir.d/schedule/$clname-$pref-schedule.conf
+echo "Schedule {
+  Name = \"$clname-$pref-schedule\"
+  Run = Level=Full at 03:00
+  }"
+
+#job full
+exec 1>/etc/bareos/bareos-dir.d/job/$clname-$pref-job.conf
+echo "Job {
+  Name = \"$clname-$pref-job\"
+  JobDefs = \"bareos-jobdef\"
+  Client = \"$client\"
+  Storage = \"$clname-storage\"
+  Fileset = \"$clname-$pref-fileset\"
+  Pool = \"$clname-$pref-pool\"
+  Schedule = \"$clname-$pref-schedule\"
+}"
+
+chown -R bareos:bareos /etc/bareos/bareos-sd.d/device
+chown -R bareos:bareos /etc/bareos/bareos-dir.d/client
+chown -R bareos:bareos /etc/bareos/bareos-dir.d/fileset
+chown -R bareos:bareos /etc/bareos/bareos-dir.d/job
+chown -R bareos:bareos /etc/bareos/bareos-dir.d/pool
+chown -R bareos:bareos /etc/bareos/bareos-dir.d/schedule
+chown -R bareos:bareos /etc/bareos/bareos-dir.d/storage
+chown -R bareos:bareos /mnt/raid6/bareos/$clname
+chmod 770 -R /etc/bareos/bareos-dir.d/
